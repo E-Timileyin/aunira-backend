@@ -1,0 +1,51 @@
+{
+  "name": "aunira-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/server.js",
+  "description": "Aunira backend \u2014 TypeScript, Express, Drizzle (hive-style structure)",
+  "author": "Eyiowuawi Timileyin",
+  "license": "MIT",
+  "scripts": {
+    "start:dev": "nodemon",
+    "start:prod": "node ./dist/server.js",
+    "start": "npm run start:prod",
+    "dev": "npm run start:dev",
+    "build": "node build.ts",
+    "typecheck": "tsc --noEmit",
+    "migrate": "node --import tsx app/migrate.ts",
+    "migrate:create": "drizzle-kit generate",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "http-status-codes": "^2.3.0",
+    "ioredis": "^5.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "drizzle-kit": "^0.31.0",
+    "esbuild": "^0.27.0",
+    "nodemon": "^3.1.11",
+    "tsx": "^4.23.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
