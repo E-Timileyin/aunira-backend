@@ -1,7 +1,7 @@
 
 ---
 
-# **AUNIRA BACKEND FEATURES (No AI Version)**
+# **AUNIRA BACKEND FEATURES**
 
 This version focuses purely on **commerce, user flow, and admin management**, optimized for scalability.
 
