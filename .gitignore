@@ -36,6 +36,8 @@ Thumbs.db
 tmp/
 
 STRUCTURE.md
+DEVELOPMENT_ORDER.md
+DATABASE_DESIGN.md
 
 # Air.toml
 /tmp

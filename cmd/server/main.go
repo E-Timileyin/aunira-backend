@@ -1,13 +1,33 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/E-Timileyin/aunira-backend/database"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+)
 
 func main() {
-	router := gin.Default()
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
+	// Load environment variables
+	if err := godotenv.Load(".env.local"); err != nil {
+		log.Printf("Warning: .env.local file not found: %v", err)
+	}
+
+	r := gin.Default()
+	database.ConnectDB()
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	// health check endpoint
+	r.GET("/health", func(c *gin.Context) {
+		c.String(http.StatusOK, "Hea;th Check Successful;")
 	})
-	router.Run() // listens on 0.0.0.0:8080 by default
+
+	r.Run(":" + port)
 }
