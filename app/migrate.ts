@@ -1,0 +1,101 @@
+// Replaces drizzle's migrate(), whose hash matching rejects databases that were
+// provisioned before the runner existed. Tracks applied files in
+// __drizzle_migrations and treats duplicate-object errors as already-applied.
+import { Pool } from "pg";
+import { config } from "@/config";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { join } from "node:path";
+
+/** @info - Bundled first (dist/migrations in prod), source fallback (dev). */
+const bundledMigrations = join(import.meta.dirname, "migrations");
+const sourceMigrations = join(
+	import.meta.dirname,
+	"..",
+	"src",
+	"db",
+	"migrations",
+);
+const migrationsDir = existsSync(bundledMigrations)
+	? bundledMigrations
+	: sourceMigrations;
+const pool = new Pool({ connectionString: config.db.uri });
+
+// Ensure tracking table exists
+await pool.query(`
+	CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+		id SERIAL PRIMARY KEY,
+		hash text NOT NULL UNIQUE,
+		created_at bigint
+	)
+`);
+
+const sqlFiles = readdirSync(migrationsDir)
+	.filter((f) => f.endsWith(".sql"))
+	.sort();
+
+let applied = 0;
+let skipped = 0;
+
+for (const file of sqlFiles) {
+	const sql = readFileSync(join(migrationsDir, file), "utf-8");
+	const hash = createHash("sha256").update(sql).digest("hex");
+
+	// Check if already applied (including seeded entries)
+	const { rows } = await pool.query(
+		`SELECT 1 FROM "__drizzle_migrations" WHERE hash = $1`,
+		[hash],
+	);
+
+	if (rows.length > 0) {
+		skipped++;
+		console.log(`  ~ ${file} (already recorded)`);
+		continue;
+	}
+
+	// Split on drizzle's statement breakpoints, run each statement
+	const statements = sql
+		.split("--> statement-breakpoint")
+		.map((s) => s.trim())
+		.filter(Boolean);
+
+	await pool.query("BEGIN");
+	try {
+		for (const stmt of statements) {
+			await pool.query(stmt);
+		}
+		await pool.query(
+			`INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES ($1, $2)`,
+			[hash, Date.now()],
+		);
+		await pool.query("COMMIT");
+		applied++;
+		console.log(`  ✓ ${file}`);
+	} catch (e: unknown) {
+		await pool.query("ROLLBACK");
+		// Postgres duplicate-object codes, all safe when the schema already exists:
+		// 42710 duplicate_object, 42P07 duplicate_table, 42P16 invalid_table_definition,
+		// 42701 duplicate_column, 42704 undefined_object (DROP of a missing object).
+		const code = (e as { code?: string }).code;
+		if (
+			code === "42710" ||
+			code === "42P07" ||
+			code === "42P16" ||
+			code === "42701" ||
+			code === "42704"
+		) {
+			await pool.query(
+				`INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+				[hash, Date.now()],
+			);
+			skipped++;
+			console.log(`  ~ ${file} (already present — recorded as applied)`);
+		} else {
+			console.error(`  ✗ ${file}: ${(e as Error).message}`);
+			throw e;
+		}
+	}
+}
+
+await pool.end();
+console.log(`\n⚡${applied} applied, ${skipped} skipped.`);
